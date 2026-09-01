@@ -226,7 +226,7 @@
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   // REEMPLAZÁ ESTE BLOQUE POR EL DE TU CONSOLA DE FIREBASE
@@ -284,12 +284,15 @@
   };
   var charts = {};
 
+  // Método por redirección amigable con Safari móvil
   document.getElementById("btnLogin").addEventListener("click", () => {
-    signInWithPopup(auth, provider).catch(console.error);
+    signInWithRedirect(auth, provider);
   });
   document.getElementById("btnLogout").addEventListener("click", () => {
     signOut(auth);
   });
+
+  getRedirectResult(auth).catch(console.error);
 
   onAuthStateChanged(auth, (user) => {
     currentUser = user;
