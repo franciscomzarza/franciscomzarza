@@ -223,13 +223,12 @@
   <footer class="stub">Sincronizado de forma segura con Google Firebase</footer>
 </div>
 
-<!-- Firebase SDK -->
+<!-- Firebase SDK & App Logic -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import { getAuth, signInWithPopup, signInWithRedirect, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-  // TUS CLAVES CONFIGURADAS
   const firebaseConfig = {
     apiKey: "AIzaSyDNAUIr-6TUYxwTBDqu-sm-prB2TvQZc7E",
     authDomain: "mis-finanzas-6a91c.firebaseapp.com",
@@ -285,23 +284,27 @@
   };
   var charts = {};
 
-  document.getElementById("btnLogin").addEventListener("click", () => {
-    signInWithRedirect(auth, provider);
+  document.getElementById("btnLogin").addEventListener("click", async () => {
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (err) {
+      console.warn("Popup bloqueado, reintentando con redirect...", err);
+      signInWithRedirect(auth, provider);
+    }
   });
+
   document.getElementById("btnLogout").addEventListener("click", () => {
     signOut(auth);
   });
 
-  getRedirectResult(auth).catch(console.error);
-
-  onAuthStateChanged(auth, (user) => {
+  onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     if (user) {
       document.getElementById("authContainer").style.display = "none";
       document.getElementById("appContainer").style.display = "block";
       document.getElementById("userBar").style.display = "flex";
       document.getElementById("userEmail").textContent = user.email;
-      loadUserData();
+      await loadUserData();
     } else {
       document.getElementById("authContainer").style.display = "block";
       document.getElementById("appContainer").style.display = "none";
@@ -311,29 +314,37 @@
 
   async function loadUserData() {
     if (!currentUser) return;
-    const userDocRef = doc(db, "users", currentUser.uid);
-    const docSnap = await getDoc(userDocRef);
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      state.entries = data.entries || [];
-      state.fixed = data.fixed || {};
-      state.debts = data.debts || [];
-    } else {
-      state.entries = [];
-      state.fixed = {};
-      state.debts = [];
+    try {
+      const userDocRef = doc(db, "users", currentUser.uid);
+      const docSnap = await getDoc(userDocRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        state.entries = data.entries || [];
+        state.fixed = data.fixed || {};
+        state.debts = data.debts || [];
+      } else {
+        state.entries = [];
+        state.fixed = {};
+        state.debts = [];
+      }
+      renderAll();
+    } catch(e) {
+      console.error("Error al cargar datos:", e);
     }
-    renderAll();
   }
 
   async function syncDB() {
     if (!currentUser) return;
-    const userDocRef = doc(db, "users", currentUser.uid);
-    await setDoc(userDocRef, {
-      entries: state.entries,
-      fixed: state.fixed,
-      debts: state.debts
-    }, { merge: true });
+    try {
+      const userDocRef = doc(db, "users", currentUser.uid);
+      await setDoc(userDocRef, {
+        entries: state.entries,
+        fixed: state.fixed,
+        debts: state.debts
+      }, { merge: true });
+    } catch(e) {
+      console.error("Error al guardar datos:", e);
+    }
   }
 
   function entriesForMonth(key){ return state.entries.filter(e => (e.date || "").slice(0, 7) === key); }
