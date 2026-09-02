@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Mis Finanzas</title>
 
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Mis Finanzas">
@@ -85,16 +86,16 @@
   .chart-wrap.small{ height: 210px; }
   .empty-note{ font-size: 13px; color: var(--ink-soft); text-align:center; padding: 30px 10px; }
 
-  form.entry-form{ display:flex; flex-wrap:wrap; gap: 8px; margin: 10px 0 6px; padding: 12px; background: rgba(255,255,255,0.4); border: 1px solid var(--rule); border-radius: 3px; }
-  form.entry-form input, form.entry-form select{ font-family: inherit; font-size: 16px; padding: 8px 9px; border: 1px solid var(--rule); border-radius: 3px; background: var(--paper); color: var(--ink); }
+  form.entry-form, form.auth-form{ display:flex; flex-wrap:wrap; gap: 8px; margin: 10px 0 6px; padding: 12px; background: rgba(255,255,255,0.4); border: 1px solid var(--rule); border-radius: 3px; }
+  form.entry-form input, form.entry-form select, form.auth-form input{ font-family: inherit; font-size: 16px; padding: 8px 9px; border: 1px solid var(--rule); border-radius: 3px; background: var(--paper); color: var(--ink); width:100%; }
   form.entry-form .f-desc{ flex: 1 1 100%; }
   form.entry-form .f-amount{ flex: 1 1 42%; }
   form.entry-form .f-type{ flex: 1 1 42%; }
   form.entry-form .f-date{ flex: 1 1 100%; }
-  form.entry-form button{ flex: 1 1 100%; font-family: inherit; font-size: 14px; font-weight: 600; padding: 9px; border: none; border-radius: 3px; background: var(--ink); color: var(--paper); cursor: pointer; margin-top: 2px; }
+  form.entry-form button, form.auth-form button{ flex: 1 1 100%; font-family: inherit; font-size: 14px; font-weight: 600; padding: 9px; border: none; border-radius: 3px; background: var(--ink); color: var(--paper); cursor: pointer; margin-top: 2px; }
   
-  .login-screen{ text-align:center; padding: 40px 20px; }
-  .btn-google{ display:inline-flex; align-items:center; gap:10px; background:#fff; border:1px solid var(--rule); padding:10px 18px; border-radius:4px; font-weight:600; font-size:14px; cursor:pointer; color:var(--ink); }
+  .login-screen{ text-align:center; padding: 20px 22px; }
+  .auth-err{ color: var(--contra); font-size: 12px; margin-top: 6px; text-align: center; }
 
   .hint{ font-size: 12px; color: var(--ink-soft); margin: 2px 0 4px; line-height: 1.4; }
   .group-title{ font-size: 12px; letter-spacing: 0.04em; color: var(--ink-soft); margin: 18px 0 4px; }
@@ -134,8 +135,13 @@
   </header>
 
   <div id="authContainer" class="login-screen">
-    <p style="font-size:14px; color:var(--ink-soft); margin-bottom:20px;">Iniciá sesión para sincronizar tus finanzas en la nube.</p>
-    <button class="btn-google" id="btnLogin">Iniciar sesión con Google</button>
+    <p style="font-size:13.5px; color:var(--ink-soft); margin-bottom:14px;">Ingresá con tu correo y contraseña para acceder a tus finanzas.</p>
+    <form class="auth-form" id="formAuth">
+      <input type="email" id="authEmail" placeholder="Tu correo electrónico" required>
+      <input type="password" id="authPassword" placeholder="Tu contraseña" required>
+      <button type="submit" id="btnSignIn">Ingresar / Registrarse</button>
+    </form>
+    <div class="auth-err" id="authErr"></div>
   </div>
 
   <div id="appContainer" style="display:none;">
@@ -226,7 +232,7 @@
 <!-- Firebase SDK & App Logic -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getAuth, signInWithPopup, signInWithRedirect, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -242,7 +248,6 @@
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
-  const provider = new GoogleAuthProvider();
 
   var MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
   var MESES_CORTOS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -284,12 +289,28 @@
   };
   var charts = {};
 
-  document.getElementById("btnLogin").addEventListener("click", async () => {
+  // AUTENTICACIÓN DIRECTA POR MAIL Y CONTRASEÑA
+  document.getElementById("formAuth").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("authEmail").value.trim();
+    const password = document.getElementById("authPassword").value;
+    const errEl = document.getElementById("authErr");
+    errEl.textContent = "";
+
     try {
-      await signInWithPopup(auth, provider);
+      // Intenta iniciar sesión
+      await signInWithEmailAndPassword(auth, email, password);
     } catch (err) {
-      console.warn("Popup bloqueado, reintentando con redirect...", err);
-      signInWithRedirect(auth, provider);
+      if (err.code === "auth/user-not-found" || err.code === "auth/invalid-credential") {
+        try {
+          // Si el usuario no existe, crea la cuenta de inmediato
+          await createUserWithEmailAndPassword(auth, email, password);
+        } catch (createErr) {
+          errEl.textContent = "Error al crear cuenta: " + createErr.message;
+        }
+      } else {
+        errEl.textContent = "Error de ingreso: " + err.message;
+      }
     }
   });
 
