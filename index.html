@@ -229,14 +229,15 @@
   import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-  // REEMPLAZÁ ESTE BLOQUE POR EL DE TU CONSOLA DE FIREBASE
+  // TUS CLAVES CONFIGURADAS
   const firebaseConfig = {
-    apiKey: "TU_API_KEY",
-    authDomain: "TU_PROYECTO.firebaseapp.com",
-    projectId: "TU_PROYECTO",
-    storageBucket: "TU_PROYECTO.appspot.com",
-    messagingSenderId: "NUMERO",
-    appId: "APP_ID"
+    apiKey: "AIzaSyDNAUIr-6TUYxwTBDqu-sm-prB2TvQZc7E",
+    authDomain: "mis-finanzas-6a91c.firebaseapp.com",
+    projectId: "mis-finanzas-6a91c",
+    storageBucket: "mis-finanzas-6a91c.firebasestorage.app",
+    messagingSenderId: "866911763421",
+    appId: "1:866911763421:web:a97cadfac82e93833d5434",
+    measurementId: "G-VCQL1TLNMG"
   };
 
   const app = initializeApp(firebaseConfig);
@@ -284,7 +285,6 @@
   };
   var charts = {};
 
-  // Método por redirección amigable con Safari móvil
   document.getElementById("btnLogin").addEventListener("click", () => {
     signInWithRedirect(auth, provider);
   });
